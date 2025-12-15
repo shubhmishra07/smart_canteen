@@ -1,0 +1,895 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Canteen Admin - Orders</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <!-- Supabase CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        /* Admin Dashboard Styles */
+        :root {
+            --admin-sidebar-width: 250px;
+            --admin-sidebar-collapsed-width: 70px;
+            --admin-header-height: 60px;
+            --admin-transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+        
+        .admin-layout {
+            display: flex;
+            min-height: 100vh;
+        }
+        
+        /* Sidebar Styles */
+        .admin-sidebar {
+            width: var(--admin-sidebar-width);
+            background: linear-gradient(135deg, var(--primary-orange-start) 0%, var(--primary-orange-end) 100%);
+            color: white;
+            height: 100vh;
+            position: fixed;
+            transition: var(--admin-transition);
+            z-index: 1000;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .admin-sidebar.collapsed {
+            width: var(--admin-sidebar-collapsed-width);
+        }
+        
+        .sidebar-header {
+            padding: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .sidebar-header h2 {
+            margin: 0;
+            font-size: 1.2rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .collapse-btn {
+            background: transparent;
+            border: none;
+            color: white;
+            cursor: pointer;
+            font-size: 1.2rem;
+            padding: 0.5rem;
+            border-radius: 50%;
+            transition: var(--admin-transition);
+        }
+        
+        .collapse-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: rotate(180deg);
+        }
+        
+        .sidebar-nav {
+            padding: 1rem 0;
+        }
+        
+        .nav-item {
+            padding: 0.75rem 1rem;
+            display: flex;
+            align-items: center;
+            text-decoration: none;
+            color: rgba(255, 255, 255, 0.9);
+            transition: var(--admin-transition);
+            border-left: 3px solid transparent;
+        }
+        
+        .nav-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+        
+        .nav-item.active {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border-left: 3px solid white;
+        }
+        
+        .nav-icon {
+            margin-right: 1rem;
+            font-size: 1.2rem;
+            min-width: 24px;
+            text-align: center;
+        }
+        
+        .nav-text {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .admin-sidebar.collapsed .nav-text {
+            display: none;
+        }
+        
+        .admin-sidebar.collapsed .nav-icon {
+            margin-right: 0;
+            text-align: center;
+        }
+        
+        /* Main Content Styles */
+        .admin-main {
+            flex: 1;
+            margin-left: var(--admin-sidebar-width);
+            transition: var(--admin-transition);
+        }
+        
+        .admin-sidebar.collapsed ~ .admin-main {
+            margin-left: var(--admin-sidebar-collapsed-width);
+        }
+        
+        .admin-header {
+            height: var(--admin-header-height);
+            background: var(--card-bg);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+        }
+        
+        .header-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .theme-toggle {
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            padding: 0.5rem;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            width: 40px;
+            height: 40px;
+            transition: var(--admin-transition);
+            color: var(--text-primary);
+        }
+        
+        .theme-toggle:hover {
+            background-color: rgba(255, 122, 24, 0.1);
+            transform: rotate(20deg);
+        }
+        
+        .theme-toggle:active {
+            transform: scale(0.9);
+        }
+        
+        #logoutBtn {
+            padding: 0.5rem 1rem;
+            background: linear-gradient(135deg, var(--primary-orange-start) 0%, var(--primary-orange-end) 100%);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: var(--admin-transition);
+            box-shadow: 0 2px 5px rgba(255, 122, 24, 0.3);
+        }
+        
+        #logoutBtn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(255, 122, 24, 0.4);
+        }
+        
+        #logoutBtn:active {
+            transform: translateY(0);
+        }
+        
+        .admin-content {
+            padding: 1.5rem;
+        }
+        
+        /* Filter Styles */
+        .orders-filter {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+            background: var(--card-bg);
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 5px 15px var(--shadow-color);
+            border: 1px solid var(--border-color);
+        }
+        
+        .filter-select {
+            padding: 0.75rem;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            background: var(--input-bg);
+            color: var(--text-color);
+            transition: var(--admin-transition);
+        }
+        
+        .filter-select:focus {
+            outline: none;
+            border-color: var(--primary-orange-start);
+            box-shadow: 0 0 0 2px rgba(255, 122, 24, 0.2);
+        }
+        
+        .orders-container {
+            background: var(--card-bg);
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 5px 15px var(--shadow-color);
+            border: 1px solid var(--border-color);
+        }
+        
+        .orders-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+        
+        .orders-table th,
+        .orders-table td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .orders-table th {
+            background: linear-gradient(135deg, var(--primary-orange-start) 0%, var(--primary-orange-end) 100%);
+            color: white;
+            font-weight: 600;
+        }
+        
+        .orders-table tr:hover {
+            background: rgba(0, 0, 0, 0.02);
+        }
+        
+        [data-theme='dark'] .orders-table tr:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        
+        .order-id {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        
+        .order-status {
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+        
+        .order-status.pending {
+            background: #ffc107;
+            color: #000;
+        }
+        
+        .order-status.preparing {
+            background: #fd7e14;
+            color: #fff;
+        }
+        
+        .order-status.ready {
+            background: #28a745;
+            color: #fff;
+        }
+        
+        .order-status.completed {
+            background: #17a2b8;
+            color: #fff;
+        }
+        
+        .order-status.cancelled {
+            background: #dc3545;
+            color: #fff;
+        }
+        
+        .items-summary {
+            max-width: 200px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            color: var(--text-secondary);
+        }
+        
+        .status-dropdown {
+            padding: 0.5rem;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            background: var(--input-bg);
+            color: var(--text-color);
+            transition: var(--admin-transition);
+        }
+        
+        .status-dropdown:focus {
+            outline: none;
+            border-color: var(--primary-orange-start);
+            box-shadow: 0 0 0 2px rgba(255, 122, 24, 0.2);
+        }
+        
+        .update-status-btn {
+            padding: 0.5rem 1rem;
+            background: linear-gradient(135deg, var(--primary-orange-start) 0%, var(--primary-orange-end) 100%);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: var(--admin-transition);
+            box-shadow: 0 2px 5px rgba(255, 122, 24, 0.3);
+        }
+        
+        .update-status-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(255, 122, 24, 0.4);
+        }
+        
+        .update-status-btn:active {
+            transform: translateY(0);
+        }
+        
+        /* Responsive Design */
+        @media (max-width: 992px) {
+            .admin-sidebar {
+                width: var(--admin-sidebar-collapsed-width);
+            }
+            
+            .admin-sidebar .nav-text {
+                display: none;
+            }
+            
+            .admin-sidebar .nav-icon {
+                margin-right: 0;
+                text-align: center;
+            }
+            
+            .admin-main {
+                margin-left: var(--admin-sidebar-collapsed-width);
+            }
+            
+            .admin-sidebar.collapsed ~ .admin-main {
+                margin-left: var(--admin-sidebar-collapsed-width);
+            }
+            
+            .sidebar-header h2 {
+                display: none;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .admin-layout {
+                flex-direction: column;
+            }
+            
+            .admin-sidebar {
+                width: 100%;
+                height: auto;
+                position: relative;
+            }
+            
+            .admin-sidebar.collapsed {
+                width: 100%;
+            }
+            
+            .admin-main {
+                margin-left: 0;
+            }
+            
+            .admin-sidebar.collapsed ~ .admin-main {
+                margin-left: 0;
+            }
+            
+            .sidebar-nav {
+                display: flex;
+                overflow-x: auto;
+                padding: 0.5rem;
+            }
+            
+            .nav-item {
+                flex-shrink: 0;
+                padding: 0.5rem;
+                border-left: none;
+                border-bottom: 3px solid transparent;
+            }
+            
+            .nav-item.active {
+                border-left: none;
+                border-bottom: 3px solid white;
+            }
+            
+            .nav-text {
+                display: none;
+            }
+            
+            .admin-header {
+                flex-direction: column;
+                height: auto;
+                padding: 1rem;
+                gap: 1rem;
+            }
+            
+            .header-actions {
+                width: 100%;
+                justify-content: space-between;
+            }
+            
+            .orders-filter {
+                flex-direction: column;
+            }
+            
+            .orders-table {
+                display: block;
+                overflow-x: auto;
+            }
+        }
+    </style>
+</head>
+<body data-theme="light">
+    <div class="admin-layout">
+        <!-- Sidebar -->
+        <aside class="admin-sidebar">
+            <div class="sidebar-header">
+                <h2>Smart Canteen Admin</h2>
+                <button class="collapse-btn">☰</button>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="admin-dashboard.html" class="nav-item">
+                    <span class="nav-icon">📊</span>
+                    <span class="nav-text">Dashboard</span>
+                </a>
+                <a href="admin-orders.html" class="nav-item active">
+                    <span class="nav-icon">📋</span>
+                    <span class="nav-text">Orders</span>
+                </a>
+                <a href="admin-stock.html" class="nav-item">
+                    <span class="nav-icon">📦</span>
+                    <span class="nav-text">Stock Management</span>
+                </a>
+                <a href="admin-revenue.html" class="nav-item">
+                    <span class="nav-icon">💰</span>
+                    <span class="nav-text">Revenue</span>
+                </a>
+            </nav>
+        </aside>
+        
+        <!-- Main Content -->
+        <main class="admin-main">
+            <header class="admin-header">
+                <div class="header-title">Order Management</div>
+                <div class="header-actions">
+                    <button id="theme-toggle" class="theme-toggle" aria-label="Toggle theme">
+                        <span class="theme-icon">🌙</span>
+                    </button>
+                    <button id="logoutBtn">Logout</button>
+                </div>
+            </header>
+            
+            <div class="admin-content">
+        
+        <div class="orders-filter">
+            <select id="statusFilter" class="filter-select">
+                <option value="all">All Statuses</option>
+                <option value="pending">Pending</option>
+                <option value="preparing">Preparing</option>
+                <option value="ready">Ready</option>
+                <option value="completed">Completed</option>
+                <option value="cancelled">Cancelled</option>
+            </select>
+            <select id="sortBy" class="filter-select">
+                <option value="newest">Newest First</option>
+                <option value="oldest">Oldest First</option>
+            </select>
+        </div>
+        
+        <div class="orders-container">
+            <h2>All Orders</h2>
+            <div id="ordersList">
+                <p>Loading orders...</p>
+            </div>
+        </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Check admin authentication
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check if admin is logged in using simple boolean flag
+            const isAdminLoggedIn = localStorage.getItem('isAdminLoggedIn') === 'true';
+            
+            if (!isAdminLoggedIn) {
+                // Redirect to login page if not authenticated
+                window.location.href = 'admin-login.html';
+                return;
+            }
+            
+            // Initialize Supabase client
+            // Check if Supabase is loaded
+            if (typeof supabase !== 'undefined') {
+                // Create Supabase client
+                const SUPABASE_URL = 'https://nbkftwsrsnvyaxolnqvt.supabase.co';
+                const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5ia2Z0d3Nyc252eWF4b2xucXZ0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU3ODMxMDAsImV4cCI6MjA4MTM1OTEwMH0.sxkl4I37z3904WfK0DWgV0gkF1BmJMzdL-vGsUuWN9Q';
+                
+                // Make supabase globally available
+                window.supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                
+                console.log('Supabase client initialized');
+                
+                // Load orders
+                loadOrders();
+            } else {
+                console.log('Supabase CDN not loaded');
+            }
+            
+            // Sidebar collapse functionality
+            const collapseBtn = document.querySelector('.collapse-btn');
+            const sidebar = document.querySelector('.admin-sidebar');
+            
+            if (collapseBtn && sidebar) {
+                collapseBtn.addEventListener('click', function() {
+                    sidebar.classList.toggle('collapsed');
+                });
+            }
+            
+            // Theme toggle functionality
+            const themeToggle = document.getElementById('theme-toggle');
+            const themeIcon = document.querySelector('.theme-icon');
+            const body = document.body;
+            
+            if (themeToggle && themeIcon && body) {
+                // Check for saved theme preference or respect OS preference
+                const savedTheme = localStorage.getItem('theme');
+                const osPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                const initialTheme = savedTheme || (osPrefersDark ? 'dark' : 'light');
+                
+                // Apply theme
+                body.setAttribute('data-theme', initialTheme);
+                themeIcon.textContent = initialTheme === 'dark' ? '☀️' : '🌙';
+                
+                // Toggle theme function
+                themeToggle.addEventListener('click', function() {
+                    const currentTheme = body.getAttribute('data-theme');
+                    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+                    
+                    body.setAttribute('data-theme', newTheme);
+                    themeIcon.textContent = newTheme === 'dark' ? '☀️' : '🌙';
+                    localStorage.setItem('theme', newTheme);
+                });
+            }
+            
+            // Set up filter event listeners
+            const statusFilter = document.getElementById('statusFilter');
+            const sortBy = document.getElementById('sortBy');
+            
+            if (statusFilter) {
+                statusFilter.addEventListener('change', loadOrders);
+            }
+            
+            if (sortBy) {
+                sortBy.addEventListener('change', loadOrders);
+            }
+            
+            // Logout functionality
+            const logoutBtn = document.getElementById('logoutBtn');
+            if (logoutBtn) {
+                logoutBtn.addEventListener('click', function() {
+                    // Clear admin session
+                    localStorage.removeItem('isAdminLoggedIn');
+                    window.location.href = 'admin-login.html';
+                });
+            }
+        });
+        
+        // Load orders
+        async function loadOrders() {
+            if (typeof supabase === 'undefined') return;
+            
+            try {
+                // Get filter values
+                const statusFilter = document.getElementById('statusFilter');
+                const sortBy = document.getElementById('sortBy');
+                
+                const statusValue = statusFilter ? statusFilter.value : 'all';
+                const sortValue = sortBy ? sortBy.value : 'newest';
+                
+                // Fetch orders
+                let query = supabase.from('orders').select('*');
+                
+                // Apply status filter
+                if (statusValue !== 'all') {
+                    // Capitalize first letter to match database values
+                    const capitalizedStatus = statusValue.charAt(0).toUpperCase() + statusValue.slice(1);
+                    query = query.eq('status', capitalizedStatus);
+                }
+                
+                // Apply sorting - use created_at instead of timestamp
+                if (sortValue === 'newest') {
+                    query = query.order('created_at', { ascending: false });
+                } else {
+                    query = query.order('created_at', { ascending: true });
+                }
+                
+                const { data: orders, error } = await query;
+                
+                if (error) {
+                    console.error('Error fetching orders:', error);
+                    document.getElementById('ordersList').innerHTML = '<p>Error loading orders</p>';
+                    return;
+                }
+                
+                // Fetch order items for all orders
+                if (orders.length > 0) {
+                    const orderIds = orders.map(order => order.id);
+                    const { data: orderItems, error: itemsError } = await supabase
+                        .from('order_items')
+                        .select('*')
+                        .in('order_id', orderIds);
+                    
+                    if (itemsError) {
+                        console.error('Error fetching order items:', itemsError);
+                        document.getElementById('ordersList').innerHTML = '<p>Error loading order items</p>';
+                        return;
+                    }
+                    
+                    // Combine orders with their items
+                    const ordersWithItems = orders.map(order => {
+                        const items = orderItems.filter(item => item.order_id === order.id);
+                        return {
+                            ...order,
+                            items: items
+                        };
+                    });
+                    
+                    displayOrders(ordersWithItems);
+                } else {
+                    displayOrders(orders);
+                }
+            } catch (error) {
+                console.error('Error loading orders:', error);
+                document.getElementById('ordersList').innerHTML = '<p>Error loading orders</p>';
+            }
+        }
+        
+        // Display orders
+        function displayOrders(orders) {
+            const ordersList = document.getElementById('ordersList');
+            
+            if (!orders || orders.length === 0) {
+                ordersList.innerHTML = '<p>No orders found</p>';
+                return;
+            }
+            
+            // Create table header
+            let tableHTML = `
+                <table class="orders-table">
+                    <thead>
+                        <tr>
+                            <th>Order ID</th>
+                            <th>User</th>
+                            <th>Items</th>
+                            <th>Total (₹)</th>
+                            <th>Status</th>
+                            <th>Timestamp</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            // Add table rows for each order
+            tableHTML += orders.map(order => {
+                // Create items summary from order items
+                const itemsSummary = order.items?.map(item => 
+                    `${item.item_name} x ${item.quantity}`
+                ).join(', ') || 'No items';
+                
+                // Truncate items summary if too long
+                const truncatedItems = itemsSummary.length > 50 ? 
+                    itemsSummary.substring(0, 50) + '...' : itemsSummary;
+                
+                // Format timestamp using created_at instead of timestamp
+                const timestamp = new Date(order.created_at).toLocaleString();
+                
+                return `
+                    <tr data-order-id="${order.id}">
+                        <td class="order-id">#${order.id}</td>
+                        <td>${order.user_name || 'Unknown User'}</td>
+                        <td class="items-summary" title="${itemsSummary}">${truncatedItems}</td>
+                        <td>₹${(order.total_amount || 0).toFixed(2)}</td>
+                        <td>
+                            <span class="order-status ${order.status?.toLowerCase() || 'pending'}">
+                                ${order.status || 'Pending'}
+                            </span>
+                        </td>
+                        <td>${timestamp}</td>
+                        <td>
+                            <select class="status-dropdown" data-order-id="${order.id}">
+                                <option value="Pending" ${order.status === 'Pending' ? 'selected' : ''}>Pending</option>
+                                <option value="Ready" ${order.status === 'Ready' ? 'selected' : ''}>Ready</option>
+                                <option value="Completed" ${order.status === 'Completed' ? 'selected' : ''}>Completed</option>
+                            </select>
+                            <button class="update-status-btn" data-order-id="${order.id}">Update</button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+            
+            tableHTML += `
+                    </tbody>
+                </table>
+            `;
+            
+            ordersList.innerHTML = tableHTML;
+            
+            // Add event listeners to update status buttons
+            document.querySelectorAll('.update-status-btn').forEach(button => {
+                button.addEventListener('click', function() {
+                    const orderId = parseInt(this.getAttribute('data-order-id'));
+                    const statusDropdown = document.querySelector(`.status-dropdown[data-order-id="${orderId}"]`);
+                    const newStatus = statusDropdown.value;
+                    updateOrderStatus(orderId, newStatus);
+                });
+            });
+            
+            // Add event listeners to status dropdowns (for Enter key)
+            document.querySelectorAll('.status-dropdown').forEach(dropdown => {
+                dropdown.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        const orderId = parseInt(this.getAttribute('data-order-id'));
+                        const newStatus = this.value;
+                        updateOrderStatus(orderId, newStatus);
+                    }
+                });
+            });
+        }
+        
+        // Update order status
+        async function updateOrderStatus(orderId, newStatus) {
+            if (typeof supabase === 'undefined') return;
+            
+            // Get current order status from UI
+            const row = document.querySelector(`tr[data-order-id="${orderId}"]`);
+            if (!row) return;
+            
+            const currentStatusCell = row.cells[4]; // Status column
+            const currentStatusSpan = currentStatusCell.querySelector('.order-status');
+            const currentStatus = currentStatusSpan ? currentStatusSpan.textContent.trim() : 'Pending';
+            
+            // Validate status transition
+            const validTransitions = {
+                'Pending': ['Ready'],
+                'Ready': ['Completed'],
+                'Completed': []
+            };
+            
+            // Check if transition is valid
+            if (validTransitions[currentStatus] && !validTransitions[currentStatus].includes(newStatus)) {
+                showError(`Invalid status transition: ${currentStatus} → ${newStatus}. Valid transitions: ${currentStatus} → ${validTransitions[currentStatus].join(' or ')}`);
+                return;
+            }
+            
+            try {
+                const { error } = await supabase
+                    .from('orders')
+                    .update({ status: newStatus })
+                    .eq('id', orderId);
+                
+                if (error) {
+                    console.error('Error updating order status:', error);
+                    showError(`Error updating order status: ${error.message}`);
+                } else {
+                    console.log(`Successfully updated order ${orderId} status to ${newStatus}`);
+                    // Update the UI immediately without reloading
+                    updateOrderStatusUI(orderId, newStatus);
+                }
+            } catch (error) {
+                console.error('Error updating order status:', error);
+                showError(`Error updating order status: ${error.message}`);
+            }
+        }
+        
+        // Update order status UI without reloading
+        function updateOrderStatusUI(orderId, newStatus) {
+            // Update status display in the table
+            const row = document.querySelector(`tr[data-order-id="${orderId}"]`);
+            if (row) {
+                const statusCell = row.cells[4]; // Status column
+                if (statusCell) {
+                    statusCell.innerHTML = `
+                        <span class="order-status ${newStatus.toLowerCase()}">
+                            ${newStatus}
+                        </span>
+                    `;
+                }
+                
+                // Update dropdown selection
+                const statusDropdown = row.querySelector('.status-dropdown');
+                if (statusDropdown) {
+                    statusDropdown.value = newStatus;
+                }
+                
+                // Show success message
+                showSuccess(`Order #${orderId} status updated to ${newStatus}`);
+            }
+        }
+        
+        // Show success message
+        function showSuccess(message) {
+            // Create or update success message element
+            let successElement = document.getElementById('order-success-message');
+            if (!successElement) {
+                successElement = document.createElement('div');
+                successElement.id = 'order-success-message';
+                successElement.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    background: #28a745;
+                    color: white;
+                    padding: 1rem;
+                    border-radius: 5px;
+                    z-index: 1000;
+                    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+                `;
+                document.body.appendChild(successElement);
+            }
+            
+            successElement.textContent = message;
+            
+            // Auto-hide after 3 seconds
+            setTimeout(() => {
+                if (successElement.parentNode) {
+                    successElement.parentNode.removeChild(successElement);
+                }
+            }, 3000);
+        }
+        
+        // Show error message
+        function showError(message) {
+            // Create or update error message element
+            let errorElement = document.getElementById('order-error-message');
+            if (!errorElement) {
+                errorElement = document.createElement('div');
+                errorElement.id = 'order-error-message';
+                errorElement.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    background: #dc3545;
+                    color: white;
+                    padding: 1rem;
+                    border-radius: 5px;
+                    z-index: 1000;
+                    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+                `;
+                document.body.appendChild(errorElement);
+            }
+            
+            errorElement.textContent = message;
+            
+            // Auto-hide after 3 seconds
+            setTimeout(() => {
+                if (errorElement.parentNode) {
+                    errorElement.parentNode.removeChild(errorElement);
+                }
+            }, 3000);
+        }
+    </script>
+</body>
+</html>

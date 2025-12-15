@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Canteen Admin - Revenue</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <!-- Supabase CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        /* Admin Dashboard Styles */
+        :root {
+            --admin-sidebar-width: 250px;
+            --admin-sidebar-collapsed-width: 70px;
+            --admin-header-height: 60px;
+            --admin-transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+        
+        .admin-layout {
+            display: flex;
+            min-height: 100vh;
+        }
+        
+        /* Sidebar Styles */
+        .admin-sidebar {
+            width: var(--admin-sidebar-width);
+            background: linear-gradient(135deg, var(--primary-orange-start) 0%, var(--primary-orange-end) 100%);
+            color: white;
+            height: 100vh;
+            position: fixed;
+            transition: var(--admin-transition);
+            z-index: 1000;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .admin-sidebar.collapsed {
+            width: var(--admin-sidebar-collapsed-width);
+        }
+        
+        .sidebar-header {
+            padding: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .sidebar-header h2 {
+            margin: 0;
+            font-size: 1.2rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .collapse-btn {
+            background: transparent;
+            border: none;
+            color: white;
+            cursor: pointer;
+            font-size: 1.2rem;
+            padding: 0.5rem;
+            border-radius: 50%;
+            transition: var(--admin-transition);
+        }
+        
+        .collapse-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: rotate(180deg);
+        }
+        
+        .sidebar-nav {
+            padding: 1rem 0;
+        }
+        
+        .nav-item {
+            padding: 0.75rem 1rem;
+            display: flex;
+            align-items: center;
+            text-decoration: none;
+            color: rgba(255, 255, 255, 0.9);
+            transition: var(--admin-transition);
+            border-left: 3px solid transparent;
+        }
+        
+        .nav-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+        
+        .nav-item.active {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border-left: 3px solid white;
+        }
+        
+        .nav-icon {
+            margin-right: 1rem;
+            font-size: 1.2rem;
+            min-width: 24px;
+            text-align: center;
+        }
+        
+        .nav-text {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .admin-sidebar.collapsed .nav-text {
+            display: none;
+        }
+        
+        .admin-sidebar.collapsed .nav-icon {
+            margin-right: 0;
+            text-align: center;
+        }
+        
+        /* Main Content Styles */
+        .admin-main {
+            flex: 1;
+            margin-left: var(--admin-sidebar-width);
+            transition: var(--admin-transition);
+        }
+        
+        .admin-sidebar.collapsed ~ .admin-main {
+            margin-left: var(--admin-sidebar-collapsed-width);
+        }
+        
+        .admin-header {
+            height: var(--admin-header-height);
+            background: var(--card-bg);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+        }
+        
+        .header-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .theme-toggle {
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            padding: 0.5rem;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            width: 40px;
+            height: 40px;
+            transition: var(--admin-transition);
+            color: var(--text-primary);
+        }
+        
+        .theme-toggle:hover {
+            background-color: rgba(255, 122, 24, 0.1);
+            transform: rotate(20deg);
+        }
+        
+        .theme-toggle:active {
+            transform: scale(0.9);
+        }
+        
+        #logoutBtn {
+            padding: 0.5rem 1rem;
+            background: linear-gradient(135deg, var(--primary-orange-start) 0%, var(--primary-orange-end) 100%);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: var(--admin-transition);
+            box-shadow: 0 2px 5px rgba(255, 122, 24, 0.3);
+        }
+        
+        #logoutBtn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(255, 122, 24, 0.4);
+        }
+        
+        #logoutBtn:active {
+            transform: translateY(0);
+        }
+        
+        .admin-content {
+            padding: 1.5rem;
+        }
+        
+        /* Stats Grid */
+        .revenue-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .stat-card {
+            background: var(--card-bg);
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 5px 15px var(--shadow-color);
+            transition: var(--admin-transition);
+            border: 1px solid var(--border-color);
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px var(--shadow-color);
+        }
+        
+        .stat-card h3 {
+            margin-top: 0;
+            color: var(--text-primary);
+            font-size: 1rem;
+            font-weight: 500;
+        }
+        
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            margin: 0.5rem 0;
+            background: linear-gradient(135deg, var(--primary-orange-start) 0%, var(--primary-orange-end) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .stat-description {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+        
+        /* Chart Styles */
+        .revenue-chart {
+            background: var(--card-bg);
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 5px 15px var(--shadow-color);
+            margin-bottom: 2rem;
+            height: 300px;
+            display: flex;
+            flex-direction: column;
+            border: 1px solid var(--border-color);
+        }
+        
+        .revenue-chart h2 {
+            margin-top: 0;
+            color: var(--text-primary);
+            text-align: center;
+            font-size: 1.3rem;
+        }
+        
+        #revenueChart {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-around;
+            gap: 1rem;
+            height: 100%;
+        }
+        
+        .chart-bar {
+            flex: 1;
+            background: linear-gradient(to top, var(--primary-orange-start), var(--primary-orange-end));
+            color: white;
+            text-align: center;
+            position: relative;
+            min-width: 40px;
+            border-radius: 6px 6px 0 0;
+            transition: var(--admin-transition);
+        }
+        
+        .chart-bar:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(255, 122, 24, 0.3);
+        }
+        
+        .chart-bar-label {
+            position: absolute;
+            bottom: -25px;
+            left: 0;
+            right: 0;
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+        
+        .chart-bar-value {
+            position: absolute;
+            top: -25px;
+            left: 0;
+            right: 0;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        
+        /* Top Products */
+        .top-products {
+            background: var(--card-bg);
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 5px 15px var(--shadow-color);
+            border: 1px solid var(--border-color);
+        }
+        
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+        
+        .section-header h2 {
+            margin: 0;
+            color: var(--text-primary);
+            font-size: 1.3rem;
+        }
+        
+        .product-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid var(--border-color);
+            transition: var(--admin-transition);
+        }
+        
+        .product-row:last-child {
+            border-bottom: none;
+        }
+        
+        .product-row:hover {
+            background: rgba(0, 0, 0, 0.02);
+        }
+        
+        [data-theme='dark'] .product-row:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        
+        .product-name {
+            flex: 2;
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+        
+        .product-sales {
+            flex: 1;
+            text-align: right;
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+        
+        /* Responsive Design */
+        @media (max-width: 992px) {
+            .admin-sidebar {
+                width: var(--admin-sidebar-collapsed-width);
+            }
+            
+            .admin-sidebar .nav-text {
+                display: none;
+            }
+            
+            .admin-sidebar .nav-icon {
+                margin-right: 0;
+                text-align: center;
+            }
+            
+            .admin-main {
+                margin-left: var(--admin-sidebar-collapsed-width);
+            }
+            
+            .admin-sidebar.collapsed ~ .admin-main {
+                margin-left: var(--admin-sidebar-collapsed-width);
+            }
+            
+            .sidebar-header h2 {
+                display: none;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .admin-layout {
+                flex-direction: column;
+            }
+            
+            .admin-sidebar {
+                width: 100%;
+                height: auto;
+                position: relative;
+            }
+            
+            .admin-sidebar.collapsed {
+                width: 100%;
+            }
+            
+            .admin-main {
+                margin-left: 0;
+            }
+            
+            .admin-sidebar.collapsed ~ .admin-main {
+                margin-left: 0;
+            }
+            
+            .sidebar-nav {
+                display: flex;
+                overflow-x: auto;
+                padding: 0.5rem;
+            }
+            
+            .nav-item {
+                flex-shrink: 0;
+                padding: 0.5rem;
+                border-left: none;
+                border-bottom: 3px solid transparent;
+            }
+            
+            .nav-item.active {
+                border-left: none;
+                border-bottom: 3px solid white;
+            }
+            
+            .nav-text {
+                display: none;
+            }
+            
+            .admin-header {
+                flex-direction: column;
+                height: auto;
+                padding: 1rem;
+                gap: 1rem;
+            }
+            
+            .header-actions {
+                width: 100%;
+                justify-content: space-between;
+            }
+            
+            .revenue-stats {
+                grid-template-columns: 1fr;
+            }
+            
+            .revenue-chart {
+                height: 250px;
+            }
+        }
+    </style>
+</head>
+<body data-theme="light">
+    <div class="admin-layout">
+        <!-- Sidebar -->
+        <aside class="admin-sidebar">
+            <div class="sidebar-header">
+                <h2>Smart Canteen Admin</h2>
+                <button class="collapse-btn">☰</button>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="admin-dashboard.html" class="nav-item">
+                    <span class="nav-icon">📊</span>
+                    <span class="nav-text">Dashboard</span>
+                </a>
+                <a href="admin-orders.html" class="nav-item">
+                    <span class="nav-icon">📋</span>
+                    <span class="nav-text">Orders</span>
+                </a>
+                <a href="admin-stock.html" class="nav-item">
+                    <span class="nav-icon">📦</span>
+                    <span class="nav-text">Stock Management</span>
+                </a>
+                <a href="admin-revenue.html" class="nav-item active">
+                    <span class="nav-icon">💰</span>
+                    <span class="nav-text">Revenue</span>
+                </a>
+            </nav>
+        </aside>
+        
+        <!-- Main Content -->
+        <main class="admin-main">
+            <header class="admin-header">
+                <div class="header-title">Revenue Analytics</div>
+                <div class="header-actions">
+                    <button id="theme-toggle" class="theme-toggle" aria-label="Toggle theme">
+                        <span class="theme-icon">🌙</span>
+                    </button>
+                    <button id="logoutBtn">Logout</button>
+                </div>
+            </header>
+            
+            <div class="admin-content">
+        
+        <div class="revenue-stats">
+            <div class="stat-card">
+                <h3>Total Revenue</h3>
+                <div class="stat-value" id="totalRevenue">₹0.00</div>
+                <p>From completed orders</p>
+            </div>
+            <div class="stat-card">
+                <h3>Daily Revenue</h3>
+                <div class="stat-value" id="todayRevenue">₹0.00</div>
+                <p>Today</p>
+            </div>
+            <div class="stat-card">
+                <h3>Monthly Revenue</h3>
+                <div class="stat-value" id="monthlyRevenue">₹0.00</div>
+                <p>This month</p>
+            </div>
+            <div class="stat-card">
+                <h3>Total Orders</h3>
+                <div class="stat-value" id="totalOrders">0</div>
+                <p>Completed orders</p>
+            </div>
+        </div>
+        
+        <div class="revenue-chart">
+            <h2>Revenue by Day (Last 7 Days)</h2>
+            <div id="revenueChart">
+                <!-- Chart will be generated here -->
+            </div>
+        </div>
+        
+        <div class="top-products">
+            <h2>Top Selling Products</h2>
+            <div id="topProducts">
+                <p>Loading product data...</p>
+            </div>
+        </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Check admin authentication
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check if admin is logged in using simple boolean flag
+            const isAdminLoggedIn = localStorage.getItem('isAdminLoggedIn') === 'true';
+            
+            if (!isAdminLoggedIn) {
+                // Redirect to login page if not authenticated
+                window.location.href = 'admin-login.html';
+                return;
+            }
+            
+            // Initialize Supabase client
+            // Check if Supabase is loaded
+            if (typeof supabase !== 'undefined') {
+                // Create Supabase client
+                const SUPABASE_URL = 'https://nbkftwsrsnvyaxolnqvt.supabase.co';
+                const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5ia2Z0d3Nyc252eWF4b2xucXZ0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU3ODMxMDAsImV4cCI6MjA4MTM1OTEwMH0.sxkl4I37z3904WfK0DWgV0gkF1BmJMzdL-vGsUuWN9Q';
+                
+                // Make supabase globally available
+                window.supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                
+                console.log('Supabase client initialized');
+                
+                // Load revenue data
+                loadRevenueData();
+            } else {
+                console.log('Supabase CDN not loaded');
+            }
+            
+            // Sidebar collapse functionality
+            const collapseBtn = document.querySelector('.collapse-btn');
+            const sidebar = document.querySelector('.admin-sidebar');
+            
+            if (collapseBtn && sidebar) {
+                collapseBtn.addEventListener('click', function() {
+                    sidebar.classList.toggle('collapsed');
+                });
+            }
+            
+            // Theme toggle functionality
+            const themeToggle = document.getElementById('theme-toggle');
+            const themeIcon = document.querySelector('.theme-icon');
+            const body = document.body;
+            
+            if (themeToggle && themeIcon && body) {
+                // Check for saved theme preference or respect OS preference
+                const savedTheme = localStorage.getItem('theme');
+                const osPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                const initialTheme = savedTheme || (osPrefersDark ? 'dark' : 'light');
+                
+                // Apply theme
+                body.setAttribute('data-theme', initialTheme);
+                themeIcon.textContent = initialTheme === 'dark' ? '☀️' : '🌙';
+                
+                // Toggle theme function
+                themeToggle.addEventListener('click', function() {
+                    const currentTheme = body.getAttribute('data-theme');
+                    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+                    
+                    body.setAttribute('data-theme', newTheme);
+                    themeIcon.textContent = newTheme === 'dark' ? '☀️' : '🌙';
+                    localStorage.setItem('theme', newTheme);
+                });
+            }
+            
+            // Logout functionality
+            const logoutBtn = document.getElementById('logoutBtn');
+            if (logoutBtn) {
+                logoutBtn.addEventListener('click', function() {
+                    // Clear admin session
+                    localStorage.removeItem('isAdminLoggedIn');
+                    window.location.href = 'admin-login.html';
+                });
+            }
+        });
+        
+        // Load revenue data
+        async function loadRevenueData() {
+            if (typeof supabase === 'undefined') return;
+            
+            try {
+                // Fetch orders
+                const { data: orders, error } = await supabase
+                    .from('orders')
+                    .select('*');
+                
+                if (error) {
+                    console.error('Error fetching orders:', error);
+                    return;
+                }
+                
+                // Calculate statistics
+                calculateStatistics(orders);
+                
+                // Generate chart data
+                generateChartData(orders);
+                
+                // Generate top products data
+                generateTopProducts(orders);
+            } catch (error) {
+                console.error('Error loading revenue data:', error);
+            }
+        }
+        
+        // Calculate statistics
+        function calculateStatistics(orders) {
+            // Filter for completed orders only
+            const completedOrders = orders.filter(order => order.status === 'Completed');
+            
+            // Total revenue from completed orders
+            const totalRevenue = completedOrders.reduce((sum, order) => sum + (order.total || 0), 0);
+            document.getElementById('totalRevenue').textContent = '₹' + totalRevenue.toFixed(2);
+            
+            // Today's revenue (completed orders only)
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const todayRevenue = completedOrders
+                .filter(order => {
+                    const orderDate = new Date(order.timestamp);
+                    orderDate.setHours(0, 0, 0, 0);
+                    return orderDate.getTime() === today.getTime();
+                })
+                .reduce((sum, order) => sum + (order.total || 0), 0);
+            document.getElementById('todayRevenue').textContent = '₹' + todayRevenue.toFixed(2);
+            
+            // Monthly revenue (completed orders only)
+            const currentMonth = today.getMonth();
+            const currentYear = today.getFullYear();
+            const monthlyRevenue = completedOrders
+                .filter(order => {
+                    const orderDate = new Date(order.timestamp);
+                    return orderDate.getMonth() === currentMonth && orderDate.getFullYear() === currentYear;
+                })
+                .reduce((sum, order) => sum + (order.total || 0), 0);
+            document.getElementById('monthlyRevenue').textContent = '₹' + monthlyRevenue.toFixed(2);
+            
+            // Total completed orders
+            document.getElementById('totalOrders').textContent = completedOrders.length;
+        }
+        
+        // Generate chart data
+        function generateChartData(orders) {
+            // Filter for completed orders only
+            const completedOrders = orders.filter(order => order.status === 'Completed');
+            
+            // Get last 7 days
+            const dates = [];
+            const revenues = [];
+            
+            for (let i = 6; i >= 0; i--) {
+                const date = new Date();
+                date.setDate(date.getDate() - i);
+                date.setHours(0, 0, 0, 0);
+                
+                dates.push(date.toLocaleDateString('en-US', { weekday: 'short' }));
+                
+                const dayRevenue = completedOrders
+                    .filter(order => {
+                        const orderDate = new Date(order.timestamp);
+                        orderDate.setHours(0, 0, 0, 0);
+                        return orderDate.getTime() === date.getTime();
+                    })
+                    .reduce((sum, order) => sum + (order.total || 0), 0);
+                
+                revenues.push(dayRevenue);
+            }
+            
+            // Find max revenue for scaling
+            const maxRevenue = Math.max(...revenues, 1);
+            
+            // Generate chart HTML
+            const chartHTML = dates.map((date, index) => {
+                const revenue = revenues[index];
+                const heightPercent = (revenue / maxRevenue) * 80; // Max 80% height
+                
+                return `
+                    <div class="chart-bar" style="height: ${heightPercent}%">
+                        <div class="chart-bar-value">₹${revenue.toFixed(0)}</div>
+                        <div class="chart-bar-label">${date}</div>
+                    </div>
+                `;
+            }).join('');
+            
+            document.getElementById('revenueChart').innerHTML = chartHTML;
+        }
+        
+        // Generate top products data
+        function generateTopProducts(orders) {
+            // Filter for completed orders only
+            const completedOrders = orders.filter(order => order.status === 'Completed');
+            
+            // Aggregate product sales
+            const productSales = {};
+            
+            completedOrders.forEach(order => {
+                if (order.items) {
+                    order.items.forEach(item => {
+                        if (productSales[item.name]) {
+                            productSales[item.name].quantity += item.quantity;
+                            productSales[item.name].revenue += item.price * item.quantity;
+                        } else {
+                            productSales[item.name] = {
+                                quantity: item.quantity,
+                                revenue: item.price * item.quantity
+                            };
+                        }
+                    });
+                }
+            });
+            
+            // Convert to array and sort by revenue
+            const productsArray = Object.keys(productSales).map(name => ({
+                name: name,
+                quantity: productSales[name].quantity,
+                revenue: productSales[name].revenue
+            }));
+            
+            productsArray.sort((a, b) => b.revenue - a.revenue);
+            
+            // Display top 5 products
+            const topProducts = productsArray.slice(0, 5);
+            
+            if (topProducts.length > 0) {
+                const topProductsHTML = topProducts.map(product => `
+                    <div class="product-row">
+                        <div class="product-name">${product.name}</div>
+                        <div class="product-sales">₹${product.revenue.toFixed(2)} (${product.quantity} sold)</div>
+                    </div>
+                `).join('');
+                
+                document.getElementById('topProducts').innerHTML = topProductsHTML;
+            } else {
+                document.getElementById('topProducts').innerHTML = '<p>No product data available</p>';
+            }
+        }
+    </script>
+</body>
+</html>

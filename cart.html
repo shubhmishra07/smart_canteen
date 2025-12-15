@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Canteen - Cart</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="navbar-container">
+            <a href="index.html" class="navbar-brand">Smart Canteen</a>
+            <ul class="navbar-nav">
+                <li class="nav-item">
+                    <a href="index.html" class="nav-link">Home</a>
+                </li>
+                <li class="nav-item">
+                    <a href="menu.html" class="nav-link">Menu</a>
+                </li>
+                <li class="nav-item">
+                    <a href="cart.html" class="nav-link active">Cart</a>
+                </li>
+                <li class="nav-item">
+                    <a href="orders.html" class="nav-link">My Orders</a>
+                </li>
+
+                <li class="nav-item">
+                    <a href="signup.html" class="nav-link">Sign Up</a>
+                </li>
+                <li class="nav-item">
+                    <a href="login.html" class="nav-link">Login</a>
+                </li>
+                <li class="nav-item">
+                    <button id="theme-toggle" class="theme-toggle" aria-label="Toggle theme">
+                        <span class="theme-icon">☀️</span>
+                    </button>
+                </li>
+            </ul>
+        </div>
+    </nav>
+    
+    <div class="container">
+        <div class="header">
+            <h1>Your Cart</h1>
+            <p>Review your items before placing order</p>
+        </div>
+        
+        <main>
+            <div class="cart-container">
+                <div class="cart-items" id="cartItemsContainer">
+                    <!-- Cart items will be loaded here dynamically -->
+                </div>
+                
+                <div class="cart-summary">
+                    <h3>Order Summary</h3>
+                    <div class="summary-item">
+                        <span>Subtotal:</span>
+                        <span id="subtotal">₹0.00</span>
+                    </div>
+                    <div class="summary-item">
+                        <span>Tax (10%):</span>
+                        <span id="tax">₹0.00</span>
+                    </div>
+                    <div class="summary-item total">
+                        <span>Total:</span>
+                        <span id="total">₹0.00</span>
+                    </div>
+                    <button id="placeOrderBtn" class="btn-primary">Place Order</button>
+                </div>
+            </div>
+        </main>
+        
+        <div class="footer">
+            <p>&copy; 2025 Smart Canteen System. All rights reserved.</p>
+        </div>
+    </div>
+    
+    <script>
+        // Initialize Supabase client
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check if Supabase is loaded
+            if (typeof supabase !== 'undefined') {
+                // Create Supabase client
+                const SUPABASE_URL = 'https://nbkftwsrsnvyaxolnqvt.supabase.co';
+                const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5ia2Z0d3Nyc252eWF4b2xucXZ0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU3ODMxMDAsImV4cCI6MjA4MTM1OTEwMH0.sxkl4I37z3904WfK0DWgV0gkF1BmJMzdL-vGsUuWN9Q';
+                
+                // Make supabase globally available
+                window.supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                
+                console.log('Supabase client initialized');
+            } else {
+                console.log('Supabase CDN not loaded');
+            }
+        });
+        
+        // Theme toggle functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const themeToggle = document.getElementById('theme-toggle');
+            const themeIcon = document.querySelector('.theme-icon');
+            const body = document.body;
+            
+            // Check for saved theme preference or respect OS preference
+            const savedTheme = localStorage.getItem('theme');
+            const osPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            const initialTheme = savedTheme || (osPrefersDark ? 'dark' : 'light');
+            
+            // Apply theme
+            body.setAttribute('data-theme', initialTheme);
+            themeIcon.textContent = initialTheme === 'dark' ? '☀️' : '🌙';
+            
+            // Toggle theme function
+            themeToggle.addEventListener('click', function() {
+                const currentTheme = body.getAttribute('data-theme');
+                const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+                
+                body.setAttribute('data-theme', newTheme);
+                themeIcon.textContent = newTheme === 'dark' ? '☀️' : '🌙';
+                localStorage.setItem('theme', newTheme);
+            });
+        });
+    </script>
+    <script src="js/cart.js"></script>
+</body>
+</html>

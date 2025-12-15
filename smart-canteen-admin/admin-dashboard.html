@@ -1,0 +1,1201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Canteen Admin - Dashboard</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <!-- Supabase CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        /* Admin Dashboard Styles */
+        :root {
+            --admin-sidebar-width: 250px;
+            --admin-sidebar-collapsed-width: 70px;
+            --admin-header-height: 60px;
+            --admin-transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+        
+        .admin-layout {
+            display: flex;
+            min-height: 100vh;
+        }
+        
+        /* Sidebar Styles */
+        .admin-sidebar {
+            width: var(--admin-sidebar-width);
+            background: linear-gradient(135deg, var(--primary-orange-start) 0%, var(--primary-orange-end) 100%);
+            color: white;
+            height: 100vh;
+            position: fixed;
+            transition: var(--admin-transition);
+            z-index: 1000;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .admin-sidebar.collapsed {
+            width: var(--admin-sidebar-collapsed-width);
+        }
+        
+        .sidebar-header {
+            padding: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .sidebar-header h2 {
+            margin: 0;
+            font-size: 1.2rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .collapse-btn {
+            background: transparent;
+            border: none;
+            color: white;
+            cursor: pointer;
+            font-size: 1.2rem;
+            padding: 0.5rem;
+            border-radius: 50%;
+            transition: var(--admin-transition);
+        }
+        
+        .collapse-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: rotate(180deg);
+        }
+        
+        .sidebar-nav {
+            padding: 1rem 0;
+        }
+        
+        .nav-item {
+            padding: 0.75rem 1rem;
+            display: flex;
+            align-items: center;
+            text-decoration: none;
+            color: rgba(255, 255, 255, 0.9);
+            transition: var(--admin-transition);
+            border-left: 3px solid transparent;
+        }
+        
+        .nav-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+        
+        .nav-item.active {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border-left: 3px solid white;
+        }
+        
+        .nav-icon {
+            margin-right: 1rem;
+            font-size: 1.2rem;
+            min-width: 24px;
+            text-align: center;
+        }
+        
+        .nav-text {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .admin-sidebar.collapsed .nav-text {
+            display: none;
+        }
+        
+        .admin-sidebar.collapsed .nav-icon {
+            margin-right: 0;
+            text-align: center;
+        }
+        
+        /* Main Content Styles */
+        .admin-main {
+            flex: 1;
+            margin-left: var(--admin-sidebar-width);
+            transition: var(--admin-transition);
+        }
+        
+        .admin-sidebar.collapsed ~ .admin-main {
+            margin-left: var(--admin-sidebar-collapsed-width);
+        }
+        
+        .admin-header {
+            height: var(--admin-header-height);
+            background: var(--card-bg);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+        }
+        
+        .header-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .theme-toggle {
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            padding: 0.5rem;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            width: 40px;
+            height: 40px;
+            transition: var(--admin-transition);
+            color: var(--text-primary);
+        }
+        
+        .theme-toggle:hover {
+            background-color: rgba(255, 122, 24, 0.1);
+            transform: rotate(20deg);
+        }
+        
+        .theme-toggle:active {
+            transform: scale(0.9);
+        }
+        
+        #logoutBtn {
+            padding: 0.5rem 1rem;
+            background: linear-gradient(135deg, var(--primary-orange-start) 0%, var(--primary-orange-end) 100%);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: var(--admin-transition);
+            box-shadow: 0 2px 5px rgba(255, 122, 24, 0.3);
+        }
+        
+        #logoutBtn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(255, 122, 24, 0.4);
+        }
+        
+        #logoutBtn:active {
+            transform: translateY(0);
+        }
+        
+        .admin-content {
+            padding: 1.5rem;
+        }
+        
+        /* Stats Grid */
+        .admin-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .stat-card {
+            background: var(--card-bg);
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 5px 15px var(--shadow-color);
+            transition: var(--admin-transition);
+            border: 1px solid var(--border-color);
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px var(--shadow-color);
+        }
+        
+        .stat-card h3 {
+            margin-top: 0;
+            color: var(--text-primary);
+            font-size: 1rem;
+            font-weight: 500;
+        }
+        
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            margin: 0.5rem 0;
+            background: linear-gradient(135deg, var(--primary-orange-start) 0%, var(--primary-orange-end) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .stat-description {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+        
+        /* Containers */
+        .orders-container, .menu-items-container {
+            background: var(--card-bg);
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 5px 15px var(--shadow-color);
+            margin-bottom: 2rem;
+            border: 1px solid var(--border-color);
+        }
+        
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+        
+        .section-header h2 {
+            margin: 0;
+            color: var(--text-primary);
+            font-size: 1.3rem;
+        }
+        
+        .view-all-link {
+            color: var(--primary-orange-start);
+            text-decoration: none;
+            font-weight: 500;
+            transition: var(--admin-transition);
+        }
+        
+        .view-all-link:hover {
+            color: var(--secondary-green-start);
+            text-decoration: underline;
+        }
+        
+        /* Recent Orders */
+        .admin-order-card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 5px 15px var(--shadow-color);
+            border: 1px solid var(--border-color);
+            transition: var(--admin-transition);
+        }
+
+        .admin-order-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px var(--shadow-color);
+        }
+
+        .order-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .order-details {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .order-id {
+            font-weight: 700;
+            color: var(--primary-orange-start);
+            font-size: 1.1rem;
+        }
+
+        .order-user {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .order-meta {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 0.5rem;
+        }
+
+        .order-status {
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .order-status.pending {
+            background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%);
+            color: #000;
+        }
+
+        .order-status.preparing {
+            background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+            color: white;
+        }
+
+        .order-status.ready {
+            background: linear-gradient(135deg, #28a745 0%, #218838 100%);
+            color: white;
+        }
+
+        .order-status.completed {
+            background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
+            color: white;
+        }
+
+        .order-status.cancelled {
+            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+            color: white;
+        }
+
+        .order-total {
+            font-weight: 700;
+            color: var(--secondary-green-start);
+            font-size: 1.2rem;
+        }
+
+        .order-time {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            font-style: italic;
+        }
+
+        /* Stock Items */
+        .admin-menu-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem;
+            border-bottom: 1px solid var(--border-color);
+            transition: var(--admin-transition);
+        }
+        
+        .admin-menu-item:last-child {
+            border-bottom: none;
+        }
+        
+        .admin-menu-item:hover {
+            background: rgba(0, 0, 0, 0.02);
+        }
+        
+        [data-theme='dark'] .admin-menu-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        
+        .item-info {
+            flex: 1;
+        }
+        
+        .item-info h4 {
+            margin: 0 0 0.25rem 0;
+            color: var(--text-primary);
+        }
+        
+        .item-category {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+        
+        .stock-controls {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .stock-input {
+            width: 80px;
+            padding: 0.5rem;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            background: var(--input-bg);
+            color: var(--text-color);
+            transition: var(--admin-transition);
+        }
+        
+        .stock-input:focus {
+            outline: none;
+            border-color: var(--primary-orange-start);
+            box-shadow: 0 0 0 2px rgba(255, 122, 24, 0.2);
+        }
+        
+        .update-stock-btn {
+            padding: 0.5rem 1rem;
+            background: linear-gradient(135deg, var(--primary-orange-start) 0%, var(--primary-orange-end) 100%);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: var(--admin-transition);
+            box-shadow: 0 2px 5px rgba(255, 122, 24, 0.3);
+        }
+        
+        .update-stock-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(255, 122, 24, 0.4);
+        }
+        
+        .update-stock-btn:active {
+            transform: translateY(0);
+        }
+        
+        /* Add Menu Item Form */
+        .add-menu-form {
+            background: var(--card-bg);
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 5px 15px var(--shadow-color);
+            margin-bottom: 2rem;
+            border: 1px solid var(--border-color);
+        }
+        
+        .add-menu-form h3 {
+            margin-top: 0;
+            color: var(--text-primary);
+            font-size: 1.3rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+        
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            background: var(--input-bg);
+            color: var(--text-color);
+            transition: var(--admin-transition);
+            box-sizing: border-box;
+        }
+        
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: var(--primary-orange-start);
+            box-shadow: 0 0 0 2px rgba(255, 122, 24, 0.2);
+        }
+        
+        .form-row {
+            display: flex;
+            gap: 1rem;
+        }
+        
+        .form-row .form-group {
+            flex: 1;
+        }
+        
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .notification {
+            padding: 1rem;
+            border-radius: 8px;
+            margin-top: 1rem;
+            display: none;
+        }
+        
+        .notification.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .notification.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .checkbox-group input[type="checkbox"] {
+            width: auto;
+            margin-right: 0.5rem;
+        }
+        
+        .submit-btn {
+            padding: 0.75rem 1.5rem;
+            background: linear-gradient(135deg, var(--primary-orange-start) 0%, var(--primary-orange-end) 100%);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: var(--admin-transition);
+            box-shadow: 0 2px 5px rgba(255, 122, 24, 0.3);
+            font-size: 1rem;
+        }
+        
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(255, 122, 24, 0.4);
+        }
+        
+        .submit-btn:active {
+            transform: translateY(0);
+        }
+        
+        /* Responsive Design */
+        @media (max-width: 992px) {
+            .admin-sidebar {
+                width: var(--admin-sidebar-collapsed-width);
+            }
+            
+            .admin-sidebar .nav-text {
+                display: none;
+            }
+            
+            .admin-sidebar .nav-icon {
+                margin-right: 0;
+                text-align: center;
+            }
+            
+            .admin-main {
+                margin-left: var(--admin-sidebar-collapsed-width);
+            }
+            
+            .sidebar-header h2 {
+                display: none;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .admin-layout {
+                flex-direction: column;
+            }
+            
+            .admin-sidebar {
+                width: 100%;
+                height: auto;
+                position: relative;
+            }
+            
+            .admin-sidebar.collapsed {
+                width: 100%;
+            }
+            
+            .admin-main {
+                margin-left: 0;
+            }
+            
+            .admin-sidebar.collapsed ~ .admin-main {
+                margin-left: 0;
+            }
+            
+            .sidebar-nav {
+                display: flex;
+                overflow-x: auto;
+                padding: 0.5rem;
+            }
+            
+            .nav-item {
+                flex-shrink: 0;
+                padding: 0.5rem;
+                border-left: none;
+                border-bottom: 3px solid transparent;
+            }
+            
+            .nav-item.active {
+                border-left: none;
+                border-bottom: 3px solid white;
+            }
+            
+            .nav-text {
+                display: none;
+            }
+            
+            .admin-header {
+                flex-direction: column;
+                height: auto;
+                padding: 1rem;
+                gap: 1rem;
+            }
+            
+            .header-actions {
+                width: 100%;
+                justify-content: space-between;
+            }
+            
+            .form-row {
+                flex-direction: column;
+                gap: 0;
+            }
+            
+            .checkbox-group {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0.5rem;
+            }
+        }
+    </style>
+</head>
+<body data-theme="light">
+    <div class="admin-layout">
+        <!-- Sidebar -->
+        <aside class="admin-sidebar">
+            <div class="sidebar-header">
+                <h2>Smart Canteen Admin</h2>
+                <button class="collapse-btn">☰</button>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="admin-dashboard.html" class="nav-item active">
+                    <span class="nav-icon">📊</span>
+                    <span class="nav-text">Dashboard</span>
+                </a>
+                <a href="admin-orders.html" class="nav-item">
+                    <span class="nav-icon">📋</span>
+                    <span class="nav-text">Orders</span>
+                </a>
+                <a href="admin-stock.html" class="nav-item">
+                    <span class="nav-icon">📦</span>
+                    <span class="nav-text">Stock Management</span>
+                </a>
+                <a href="admin-revenue.html" class="nav-item">
+                    <span class="nav-icon">💰</span>
+                    <span class="nav-text">Revenue</span>
+                </a>
+            </nav>
+        </aside>
+        
+        <!-- Main Content -->
+        <main class="admin-main">
+            <header class="admin-header">
+                <div class="header-title">Dashboard</div>
+                <div class="header-actions">
+                    <button id="theme-toggle" class="theme-toggle" aria-label="Toggle theme">
+                        <span class="theme-icon">🌙</span>
+                    </button>
+                    <button id="logoutBtn">Logout</button>
+                </div>
+            </header>
+            
+            <div class="admin-content">
+        
+        <div class="admin-stats">
+            <div class="stat-card">
+                <h3>Total Orders</h3>
+                <div class="stat-value" id="totalOrders">0</div>
+                <p class="stat-description">Orders today</p>
+            </div>
+            <div class="stat-card">
+                <h3>Total Revenue</h3>
+                <div class="stat-value" id="totalRevenue">₹0.00</div>
+                <p class="stat-description">Revenue today</p>
+            </div>
+            <div class="stat-card">
+                <h3>Out of Stock</h3>
+                <div class="stat-value" id="outOfStock">0</div>
+                <p class="stat-description">Items unavailable</p>
+            </div>
+        </div>
+        
+        <div class="orders-container">
+            <div class="section-header">
+                <h2>Recent Orders</h2>
+                <a href="admin-orders.html" class="view-all-link">View All →</a>
+            </div>
+            <div id="recentOrders">
+                <p>Loading recent orders...</p>
+            </div>
+        </div>
+        
+        <div class="menu-items-container">
+            <div class="section-header">
+                <h2>Stock Management</h2>
+                <a href="admin-stock.html" class="view-all-link">View All →</a>
+            </div>
+            
+            <!-- Add New Menu Item Form -->
+            <div class="add-menu-form">
+                <h3>Add New Menu Item</h3>
+                <form id="addMenuItemForm">
+                    <div class="form-group">
+                        <label for="itemName">Item Name:</label>
+                        <input type="text" id="itemName" name="name" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="itemCategory">Category:</label>
+                        <select id="itemCategory" name="category" required>
+                            <option value="">Select Category</option>
+                            <option value="Indian Veg">Indian Veg</option>
+                            <option value="Indian Non-Veg">Indian Non-Veg</option>
+                            <option value="Snacks & Street Food">Snacks & Street Food</option>
+                            <option value="Junk Food">Junk Food</option>
+                            <option value="Sweets">Sweets</option>
+                            <option value="Beverages">Beverages</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="itemPrice">Price (₹):</label>
+                            <input type="number" id="itemPrice" name="price" step="0.01" min="0" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="itemStock">Stock Quantity:</label>
+                            <input type="number" id="itemStock" name="stock_qty" min="0" value="0" required>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="itemImage">Image URL:</label>
+                        <input type="url" id="itemImage" name="image_url" placeholder="https://example.com/image.jpg" required>
+                    </div>
+                    
+                    <div class="form-group checkbox-group">
+                        <input type="checkbox" id="isVeg" name="is_veg" checked>
+                        <label for="isVeg">Vegetarian</label>
+                        
+                        <input type="checkbox" id="inStock" name="in_stock" checked>
+                        <label for="inStock">In Stock</label>
+                    </div>
+                    
+                    <button type="submit" class="submit-btn">Add Menu Item</button>
+                </form>
+            </div>
+            
+            <div id="stockItems">
+                <p>Loading stock items...</p>
+            </div>
+        </div>
+        
+        <!-- New Add Food Item Form as requested -->
+        <div class="add-menu-form">
+            <h3>Add New Food Item</h3>
+            <form id="addFoodItemForm">
+                <div class="form-group">
+                    <label for="foodName">Food Name:</label>
+                    <input type="text" id="foodName" name="name" required placeholder="Enter food item name">
+                </div>
+                
+                <div class="form-group">
+                    <label for="foodPrice">Price (₹):</label>
+                    <input type="number" id="foodPrice" name="price" step="1" min="0" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="offerPercent">Offer Percent (%):</label>
+                    <input type="number" id="offerPercent" name="offer_percent" min="0" max="100" value="0">
+                    <small>If applicable</small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="foodCategory">Category:</label>
+                    <select id="foodCategory" name="category" required>
+                        <option value="">Select Category</option>
+                        <option value="Indian Veg">Indian Veg</option>
+                        <option value="Indian Non-Veg">Indian Non-Veg</option>
+                        <option value="Snacks & Street Food">Snacks & Street Food</option>
+                        <option value="Junk Food">Junk Food</option>
+                        <option value="Sweets">Sweets</option>
+                        <option value="Beverages">Beverages</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="foodImage">Image URL (optional):</label>
+                    <input type="url" id="foodImage" name="image" placeholder="https://example.com/image.jpg">
+                </div>
+                
+                <div class="form-group checkbox-group">
+                    <input type="checkbox" id="isVegItem" name="veg" checked>
+                    <label for="isVegItem">Vegetarian</label>
+                    
+                    <input type="checkbox" id="inStockItem" name="stock" checked>
+                    <label for="inStockItem">In Stock</label>
+                </div>
+                
+                <button type="submit" class="submit-btn">Add Item</button>
+            </form>
+        </div>
+        
+        <div class="notification" id="formNotification"></div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Check admin authentication
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check if admin is logged in using simple boolean flag
+            const isAdminLoggedIn = localStorage.getItem('isAdminLoggedIn') === 'true';
+            
+            if (!isAdminLoggedIn) {
+                // Redirect to login page if not authenticated
+                window.location.href = 'admin-login.html';
+                return;
+            }
+            
+            // Initialize Supabase client
+            // Check if Supabase is loaded
+            if (typeof supabase !== 'undefined') {
+                // Create Supabase client
+                const SUPABASE_URL = 'https://nbkftwsrsnvyaxolnqvt.supabase.co';
+                const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5ia2Z0d3Nyc252eWF4b2xucXZ0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU3ODMxMDAsImV4cCI6MjA4MTM1OTEwMH0.sxkl4I37z3904WfK0DWgV0gkF1BmJMzdL-vGsUuWN9Q';
+                
+                // Make supabase globally available
+                window.supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                
+                console.log('Supabase client initialized');
+                
+                // Load dashboard data
+                loadDashboardData();
+            } else {
+                console.log('Supabase CDN not loaded');
+            }
+            
+            // Sidebar collapse functionality
+            const collapseBtn = document.querySelector('.collapse-btn');
+            const sidebar = document.querySelector('.admin-sidebar');
+            
+            if (collapseBtn && sidebar) {
+                collapseBtn.addEventListener('click', function() {
+                    sidebar.classList.toggle('collapsed');
+                });
+            }
+            
+            // Theme toggle functionality
+            const themeToggle = document.getElementById('theme-toggle');
+            const themeIcon = document.querySelector('.theme-icon');
+            const body = document.body;
+            
+            if (themeToggle && themeIcon && body) {
+                // Check for saved theme preference or respect OS preference
+                const savedTheme = localStorage.getItem('theme');
+                const osPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                const initialTheme = savedTheme || (osPrefersDark ? 'dark' : 'light');
+                
+                // Apply theme
+                body.setAttribute('data-theme', initialTheme);
+                themeIcon.textContent = initialTheme === 'dark' ? '☀️' : '🌙';
+                
+                // Toggle theme function
+                themeToggle.addEventListener('click', function() {
+                    const currentTheme = body.getAttribute('data-theme');
+                    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+                    
+                    body.setAttribute('data-theme', newTheme);
+                    themeIcon.textContent = newTheme === 'dark' ? '☀️' : '🌙';
+                    localStorage.setItem('theme', newTheme);
+                });
+            }
+            
+            // Logout functionality
+            const logoutBtn = document.getElementById('logoutBtn');
+            if (logoutBtn) {
+                logoutBtn.addEventListener('click', function() {
+                    // Clear admin session
+                    localStorage.removeItem('isAdminLoggedIn');
+                    window.location.href = 'admin-login.html';
+                });
+            }
+        });
+        
+        // Load dashboard data
+        async function loadDashboardData() {
+            if (typeof supabase === 'undefined') return;
+            
+            try {
+                // Load orders
+                const { data: orders, error: ordersError } = await supabase
+                    .from('orders')
+                    .select('*')
+                    .order('created_at', { ascending: false }); // Latest orders first
+                
+                if (ordersError) {
+                    console.error('Error fetching orders:', ordersError);
+                    document.getElementById('recentOrders').innerHTML = '<p>Error loading orders</p>';
+                } else {
+                    // Update total orders
+                    document.getElementById('totalOrders').textContent = orders.length;
+                    
+                    // Calculate total revenue
+                    const totalRevenue = orders.reduce((sum, order) => sum + (order.total_amount || 0), 0);
+                    document.getElementById('totalRevenue').textContent = '₹' + totalRevenue.toFixed(2);
+                    
+                    // Display recent orders (last 5) with all required information
+                    const recentOrders = orders.slice(0, 5);
+                    if (recentOrders.length > 0) {
+                        document.getElementById('recentOrders').innerHTML = recentOrders.map(order => `
+                            <div class="admin-order-card">
+                                <div class="order-info">
+                                    <div class="order-details">
+                                        <div class="order-id">Order #${order.id}</div>
+                                        <div class="order-user">${order.user_name || 'Unknown User'}</div>
+                                    </div>
+                                    <div class="order-meta">
+                                        <div class="order-status ${order.status?.toLowerCase() || 'pending'}">
+                                            ${order.status || 'Pending'}
+                                        </div>
+                                        <div class="order-total">₹${(order.total_amount || 0).toFixed(2)}</div>
+                                    </div>
+                                </div>
+                                <div class="order-time">${new Date(order.created_at).toLocaleString()}</div>
+                            </div>
+                        `).join('');
+                    } else {
+                        document.getElementById('recentOrders').innerHTML = '<p>No orders found</p>';
+                    }
+                }
+                
+                // Load menu items
+                const { data: menuItems, error: menuError } = await supabase
+                    .from('menu_items')
+                    .select('*');
+                
+                if (menuError) {
+                    console.error('Error fetching menu items:', menuError);
+                    document.getElementById('stockItems').innerHTML = '<p>Error loading stock items</p>';
+                } else {
+                    // Count out of stock items
+                    const outOfStockCount = menuItems.filter(item => (item.stock_count || 0) === 0).length;
+                    document.getElementById('outOfStock').textContent = outOfStockCount;
+                    
+                    // Display stock items (first 5)
+                    const stockItems = menuItems.slice(0, 5);
+                    if (stockItems.length > 0) {
+                        document.getElementById('stockItems').innerHTML = stockItems.map(item => `
+                            <div class="admin-menu-item">
+                                <div class="item-info">
+                                    <h4>${item.name}</h4>
+                                    <p class="item-category">${item.category}</p>
+                                </div>
+                                <div class="stock-controls">
+                                    <input type="number" class="stock-input" data-item-id="${item.id}" value="${item.stock_count || 0}" min="0">
+                                    <button class="update-stock-btn" data-item-id="${item.id}">Update</button>
+                                </div>
+                            </div>
+                        `).join('');
+                        
+                        // Add event listeners to update buttons
+                        document.querySelectorAll('.update-stock-btn').forEach(button => {
+                            button.addEventListener('click', function() {
+                                const itemId = parseInt(this.getAttribute('data-item-id'));
+                                const stockInput = document.querySelector(`.stock-input[data-item-id="${itemId}"]`);
+                                const newStock = parseInt(stockInput.value);
+                                updateStock(itemId, newStock);
+                            });
+                        });
+                    } else {
+                        document.getElementById('stockItems').innerHTML = '<p>No menu items found</p>';
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading dashboard data:', error);
+            }
+        }
+        
+        // Update stock count
+        async function updateStock(itemId, newStock) {
+            if (typeof supabase === 'undefined') return;
+            
+            try {
+                const { error } = await supabase
+                    .from('menu_items')
+                    .update({ stock_count: newStock })
+                    .eq('id', itemId);
+                
+                if (error) {
+                    console.error('Error updating stock:', error);
+                    alert('Error updating stock: ' + error.message);
+                } else {
+                    console.log(`Successfully updated item ${itemId} stock to ${newStock}`);
+                    alert('Stock updated successfully!');
+                    // Reload dashboard data
+                    loadDashboardData();
+                }
+            } catch (error) {
+                console.error('Error updating stock:', error);
+                alert('Error updating stock: ' + error.message);
+            }
+        }
+        
+        // Handle add menu item form submission
+        const addMenuItemForm = document.getElementById('addMenuItemForm');
+        if (addMenuItemForm) {
+            addMenuItemForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                addMenuItem();
+            });
+        }
+        
+        // Handle new add food item form submission
+        const addFoodItemForm = document.getElementById('addFoodItemForm');
+        if (addFoodItemForm) {
+            addFoodItemForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                addFoodItem();
+            });
+        }
+        
+        // Add new menu item
+        async function addMenuItem() {
+            if (typeof supabase === 'undefined') {
+                alert('Supabase is not initialized');
+                return;
+            }
+            
+            try {
+                // Get form values
+                const name = document.getElementById('itemName').value.trim();
+                const category = document.getElementById('itemCategory').value;
+                const price = parseFloat(document.getElementById('itemPrice').value);
+                const image_url = document.getElementById('itemImage').value.trim();
+                const is_veg = document.getElementById('isVeg').checked;
+                const stock_qty = parseInt(document.getElementById('itemStock').value);
+                const in_stock = document.getElementById('inStock').checked;
+                
+                // Validate required fields
+                if (!name || !category || !price || !image_url) {
+                    alert('Please fill in all required fields');
+                    return;
+                }
+                
+                // Prepare data for insertion
+                const menuItem = {
+                    name: name,
+                    category: category,
+                    price: price,
+                    image: image_url, // Note: using 'image' to match database schema
+                    veg: is_veg, // Note: using 'veg' to match database schema
+                    stock_count: stock_qty, // Note: using 'stock_count' to match database schema
+                    // Note: 'in_stock' is derived from stock_count in the UI, not stored separately
+                };
+                
+                // Insert new menu item
+                const { data, error } = await supabase
+                    .from('menu_items')
+                    .insert([menuItem])
+                    .select();
+                
+                if (error) {
+                    console.error('Error adding menu item:', error);
+                    alert('Error adding menu item: ' + error.message);
+                } else {
+                    console.log('Successfully added menu item:', data);
+                    alert('Menu item added successfully!');
+                    
+                    // Reset form
+                    document.getElementById('addMenuItemForm').reset();
+                    
+                    // Reload dashboard data to show new item
+                    loadDashboardData();
+                }
+            } catch (error) {
+                console.error('Error adding menu item:', error);
+                alert('Error adding menu item: ' + error.message);
+            }
+        }
+        
+        // Add new food item (as requested)
+        async function addFoodItem() {
+            if (typeof supabase === 'undefined') {
+                showFormNotification('Supabase is not initialized', 'error');
+                return;
+            }
+            
+            try {
+                // Get form values
+                const name = document.getElementById('foodName').value.trim();
+                const price = parseInt(document.getElementById('foodPrice').value);
+                const offer_percent = parseInt(document.getElementById('offerPercent').value) || 0;
+                const category = document.getElementById('foodCategory').value;
+                const image = document.getElementById('foodImage').value.trim();
+                const veg = document.getElementById('isVegItem').checked;
+                const stock = document.getElementById('inStockItem').checked;
+                
+                // Validate required fields
+                if (!name || !category) {
+                    showFormNotification('Please fill in all required fields', 'error');
+                    return;
+                }
+                
+                // Generate image URL if not provided
+                let imageUrl = image;
+                if (!imageUrl) {
+                    imageUrl = `https://source.unsplash.com/300x200/?${category.toLowerCase().replace(' ', '-')},${veg ? 'vegetarian' : 'meat'}`;
+                }
+                
+                // Convert stock boolean to stock_count (0 or 10 as default)
+                const stock_count = stock ? 10 : 0;
+                
+                const foodItem = {
+                    name: name,
+                    category: category,
+                    price: price,
+                    offer_percent: offer_percent,
+                    veg: veg,
+                    stock: stock,  // Original boolean field
+                    stock_count: stock_count,  // Integer field for stock count
+                    image: imageUrl
+                };
+                
+                // Insert new food item
+                const { data, error } = await supabase
+                    .from('menu_items')
+                    .insert([foodItem])
+                    .select();
+                
+                if (error) {
+                    console.error('Error adding food item:', error);
+                    showFormNotification('Error adding food item: ' + error.message, 'error');
+                } else {
+                    console.log('Successfully added food item:', data);
+                    showFormNotification('Food item added successfully!', 'success');
+                    
+                    // Reset form
+                    document.getElementById('addFoodItemForm').reset();
+                    
+                    // Reload dashboard data
+                    loadDashboardData();
+                }
+            } catch (error) {
+                console.error('Error adding food item:', error);
+                showFormNotification('Error adding food item: ' + error.message, 'error');
+            }
+        }
+        
+        // Show notification for the form
+        function showFormNotification(message, type) {
+            const notification = document.getElementById('formNotification');
+            if (notification) {
+                notification.textContent = message;
+                notification.className = 'notification ' + type;
+                notification.style.display = 'block';
+                
+                // Auto-hide after 3 seconds
+                setTimeout(() => {
+                    notification.style.display = 'none';
+                }, 3000);
+            }
+        }
+    </script>
+</body>
+</html>

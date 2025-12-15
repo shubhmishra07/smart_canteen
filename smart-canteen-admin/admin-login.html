@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Canteen Admin - Login</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <style>
+        /* Admin Login Styles */
+        :root {
+            --admin-transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+        
+        body {
+            background: linear-gradient(135deg, var(--primary-orange-start) 0%, var(--primary-orange-end) 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0;
+            padding: 1rem;
+        }
+        
+        .admin-login-wrapper {
+            width: 100%;
+            max-width: 450px;
+        }
+        
+        .admin-login-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        
+        .admin-login-header h1 {
+            color: white;
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        
+        .admin-login-header p {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 1.1rem;
+        }
+        
+        .admin-login-container {
+            background: var(--card-bg);
+            padding: 2.5rem;
+            border-radius: 16px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--border-color);
+        }
+        
+        .theme-toggle-container {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 1rem;
+        }
+        
+        .theme-toggle {
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            padding: 0.5rem;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            width: 40px;
+            height: 40px;
+            transition: var(--admin-transition);
+            color: var(--text-primary);
+        }
+        
+        .theme-toggle:hover {
+            background-color: rgba(255, 122, 24, 0.1);
+            transform: rotate(20deg);
+        }
+        
+        .theme-toggle:active {
+            transform: scale(0.9);
+        }
+        
+        .admin-login-form .form-group {
+            margin-bottom: 1.5rem;
+        }
+        
+        .admin-login-form label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+        
+        .admin-login-form input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background: var(--input-bg);
+            color: var(--text-color);
+            transition: var(--admin-transition);
+            font-size: 1rem;
+        }
+        
+        .admin-login-form input:focus {
+            outline: none;
+            border-color: var(--primary-orange-start);
+            box-shadow: 0 0 0 3px rgba(255, 122, 24, 0.2);
+        }
+        
+        .admin-login-form button {
+            width: 100%;
+            padding: 0.75rem;
+            background: linear-gradient(135deg, var(--primary-orange-start) 0%, var(--primary-orange-end) 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 500;
+            margin-top: 1rem;
+            transition: var(--admin-transition);
+            box-shadow: 0 4px 15px rgba(255, 122, 24, 0.3);
+        }
+        
+        .admin-login-form button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 122, 24, 0.4);
+        }
+        
+        .admin-login-form button:active {
+            transform: translateY(0);
+        }
+        
+        .login-footer {
+            text-align: center;
+            margin-top: 1.5rem;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+        
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            body {
+                padding: 1rem;
+            }
+            
+            .admin-login-container {
+                padding: 1.5rem;
+            }
+            
+            .admin-login-header h1 {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body data-theme="light">
+    <div class="admin-login-wrapper">
+        <div class="admin-login-header">
+            <h1>Smart Canteen Admin</h1>
+            <p>Welcome back! Please sign in to continue</p>
+        </div>
+        
+        <div class="admin-login-container">
+            <div class="theme-toggle-container">
+                <button id="theme-toggle" class="theme-toggle" aria-label="Toggle theme">
+                    <span class="theme-icon">🌙</span>
+                </button>
+            </div>
+            
+            <form class="admin-login-form">
+                <div class="form-group">
+                    <label for="adminUsername">Email</label>
+                    <input type="email" id="adminUsername" placeholder="Enter admin email" required>
+                </div>
+                <div class="form-group">
+                    <label for="adminPassword">Password</label>
+                    <input type="password" id="adminPassword" placeholder="Enter admin password" required>
+                </div>
+                <button type="button" id="adminLoginBtn">Login</button>
+            </form>
+            
+            <div class="login-footer">
+                <p>© 2023 Smart Canteen Admin Portal</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Supabase CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+        // Initialize Supabase client
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check if Supabase is loaded
+            if (typeof supabase !== 'undefined') {
+                // Create Supabase client
+                const SUPABASE_URL = 'https://nbkftwsrsnvyaxolnqvt.supabase.co';
+                const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5ia2Z0d3Nyc252eWF4b2xucXZ0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU3ODMxMDAsImV4cCI6MjA4MTM1OTEwMH0.sxkl4I37z3904WfK0DWgV0gkF1BmJMzdL-vGsUuWN9Q';
+                
+                // Make supabase globally available
+                window.supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                
+                console.log('Supabase client initialized');
+            } else {
+                console.log('Supabase CDN not loaded');
+            }
+            
+            // Theme toggle functionality
+            const themeToggle = document.getElementById('theme-toggle');
+            const themeIcon = document.querySelector('.theme-icon');
+            const body = document.body;
+            
+            if (themeToggle && themeIcon && body) {
+                // Check for saved theme preference or respect OS preference
+                const savedTheme = localStorage.getItem('theme');
+                const osPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                const initialTheme = savedTheme || (osPrefersDark ? 'dark' : 'light');
+                
+                // Apply theme
+                body.setAttribute('data-theme', initialTheme);
+                themeIcon.textContent = initialTheme === 'dark' ? '☀️' : '🌙';
+                
+                // Toggle theme function
+                themeToggle.addEventListener('click', function() {
+                    const currentTheme = body.getAttribute('data-theme');
+                    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+                    
+                    body.setAttribute('data-theme', newTheme);
+                    themeIcon.textContent = newTheme === 'dark' ? '☀️' : '🌙';
+                    localStorage.setItem('theme', newTheme);
+                });
+            }
+            
+            // Admin login functionality
+            const loginBtn = document.getElementById('adminLoginBtn');
+            if (loginBtn) {
+                loginBtn.addEventListener('click', function() {
+                    handleAdminLogin();
+                });
+            }
+        });
+        
+        // Handle admin login
+        async function handleAdminLogin() {
+            const email = document.getElementById('adminUsername').value.trim();
+            const password = document.getElementById('adminPassword').value.trim();
+            
+            // Simple validation
+            if (!email || !password) {
+                alert('Please enter both email and password');
+                return;
+            }
+            
+            // For exam-safe implementation, we'll use a hardcoded admin check
+            // In a real application, you would use Supabase Auth
+            const ADMIN_EMAIL = 'admin@canteen.com';
+            const ADMIN_PASSWORD = 'admin123';
+            
+            if (email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
+                // Store admin session in localStorage as a simple boolean flag
+                localStorage.setItem('isAdminLoggedIn', 'true');
+                
+                // Redirect to dashboard
+                window.location.href = 'admin-dashboard.html';
+            } else {
+                alert('Invalid email or password. Please use admin@canteen.com with password admin123');
+            }
+        }
+    </script>
+</body>
+</html>
